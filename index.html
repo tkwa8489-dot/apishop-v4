@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APISHOP V4 - Black Office Full</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
+    <style>
+        body { background-color: #000000; color: #ffffff; font-family: 'Kanit', sans-serif; margin: 0; overflow-x: hidden; }
+        .glass { background: #0a0a0a; border: 1px solid #1a1a1a; }
+        .admin-row { background: #050505; border: 1px solid #111; transition: 0.3s; }
+        .hidden { display: none; }
+        input, textarea { background: #000000 !important; border: 1px solid #222 !important; color: white !important; }
+        input:focus { border-color: #3b82f6 !important; }
+    </style>
+</head>
+<body class="p-2 md:p-6">
+
+    <!-- 1. LOGIN / REGISTER -->
+    <div id="auth-page" class="max-w-md mx-auto mt-12 glass p-10 rounded-[2.5rem] border-t-2 border-sky-600 shadow-2xl">
+        <h1 class="text-5xl font-black text-center text-white mb-1 italic tracking-tighter">APISHOP</h1>
+        <p class="text-center text-gray-600 mb-10 text-[10px] uppercase tracking-[0.2em]">Black Office System</p>
+        <div class="space-y-4">
+            <input type="text" id="user-id" placeholder="USERNAME" class="w-full p-4 rounded-2xl outline-none text-center">
+            <input type="password" id="user-pass" placeholder="PASSWORD" class="w-full p-4 rounded-2xl outline-none text-center">
+            <input type="text" id="user-pin" placeholder="PIN" maxlength="4" class="w-full p-4 rounded-2xl outline-none text-center">
+            <button onclick="handleAuth()" class="w-full bg-white text-black p-4 rounded-2xl font-black text-xl hover:bg-sky-500 hover:text-white transition">LOGIN</button>
+            <p class="text-center text-[10px] text-gray-500 cursor-pointer" onclick="toggleAuthMode()">REGISTER / LOGIN SWITCH</p>
+        </div>
+    </div>
+
+    <!-- 2. USER INTERFACE -->
+    <div id="user-panel" class="max-w-6xl mx-auto hidden">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 text-center md:text-left">
+            <div class="glass p-6 rounded-[2rem] border-l-4 border-green-600">
+                <p class="text-gray-500 text-[10px] uppercase">Balance</p>
+                <h2 class="text-4xl font-bold"><span id="u-balance">0</span> <span class="text-sm text-gray-400 font-normal">฿</span></h2>
+            </div>
+            <div class="md:col-span-2 flex items-center justify-between glass p-6 rounded-[2rem] border-l-4 border-sky-600 px-8">
+                <div>
+                    <p class="text-[10px] text-gray-500 uppercase">Welcome</p>
+                    <h3 class="text-2xl font-bold" id="u-name">USER</h3>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleSection('topup-box')" class="bg-white text-black px-6 py-2 rounded-xl text-xs font-bold uppercase">Topup</button>
+                    <button onclick="toggleSection('history-box')" class="bg-zinc-900 px-6 py-2 rounded-xl text-xs font-bold border border-zinc-800 uppercase text-white">History</button>
+                    <button onclick="location.reload()" class="bg-red-950/20 text-red-500 px-4 py-2 rounded-xl text-[10px] font-bold border border-red-900/30">EXIT</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="topup-box" class="hidden glass p-8 rounded-[2rem] mb-6 border border-orange-900/30">
+            <h3 class="font-bold text-white mb-4 italic uppercase">🧧 True Wallet Gift Link</h3>
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="angpao-link" placeholder="https://gift.truemoney.com..." class="flex-1 p-4 rounded-2xl outline-none">
+                <button onclick="processAngpao()" class="bg-orange-600 px-8 py-4 rounded-2xl font-bold hover:bg-orange-500 transition">REDEEM</button>
+            </div>
+        </div>
+
+        <div id="history-box" class="hidden glass p-8 rounded-[2rem] mb-6 border border-zinc-800">
+            <h3 class="font-bold mb-4 text-sky-500 italic uppercase tracking-widest">📜 Purchase Logs</h3>
+            <div id="u-history-list" class="space-y-3 max-h-80 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div id="p-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 pb-20"></div>
+    </div>
+
+    <!-- 3. ADMIN OFFICE (หลังร้านแบบแถว) -->
+    <div id="admin-panel" class="max-w-6xl mx-auto hidden">
+        <div class="flex justify-between items-center mb-8 border-b border-zinc-900 pb-6">
+            <div><h1 class="text-3xl font-black text-red-600 italic">BLACK OFFICE</h1><p class="text-[10px] text-zinc-500 uppercase tracking-widest">Monitor Mode</p></div>
+            <button onclick="location.reload()" class="bg-white text-black px-6 py-2 rounded-full font-black text-xs">LOGOUT</button>
+        </div>
+
+        <div class="space-y-2 mb-10">
+            <div class="flex justify-between items-center bg-zinc-950 p-5 rounded-2xl border border-zinc-900"><span class="text-xs font-bold text-zinc-400 uppercase">💰 Total Shop Balance</span><span class="text-2xl font-black text-green-500"><span id="adm-total-money">0</span> ฿</span></div>
+            <div class="flex justify-between items-center bg-zinc-950 p-5 rounded-2xl border border-zinc-900"><span class="text-xs font-bold text-zinc-400 uppercase">📦 Ready to Sell</span><span class="text-2xl font-black text-blue-500"><span id="adm-stock-count">0</span> <small class="text-xs italic text-gray-500">Items</small></span></div>
+            <div class="flex justify-between items-center bg-zinc-950 p-5 rounded-2xl border border-zinc-900"><span class="text-xs font-bold text-zinc-400 uppercase">🛒 Total Sold</span><span class="text-2xl font-black text-orange-500"><span id="adm-sold-count">0</span> <small class="text-xs italic text-gray-500">Items</small></span></div>
+            <div class="flex justify-between items-center bg-zinc-950 p-5 rounded-2xl border border-zinc-900"><span class="text-xs font-bold text-zinc-400 uppercase">👤 Total Members</span><span class="text-2xl font-black text-purple-500"><span id="adm-user-count">0</span> <small class="text-xs italic text-gray-500">Users</small></span></div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="glass p-8 rounded-[2.5rem] border border-zinc-900 h-fit">
+                <h3 class="font-bold mb-6 text-red-600 italic">ADD NEW STOCK</h3>
+                <div class="space-y-4">
+                    <input type="text" id="adm-name" placeholder="Name" class="w-full p-4 rounded-2xl outline-none">
+                    <input type="number" id="adm-price" placeholder="Price" class="w-full p-4 rounded-2xl outline-none">
+                    <textarea id="adm-items" rows="6" placeholder="Data (1 line = 1 ID)" class="w-full p-4 rounded-2xl outline-none text-[10px]"></textarea>
+                    <button onclick="addStock()" class="w-full bg-red-600 p-4 rounded-2xl font-bold hover:bg-red-500 transition">PUSH TO STOCK</button>
+                </div>
+            </div>
+            <div class="md:col-span-2 space-y-4" id="adm-list"></div>
+        </div>
+    </div>
+
+    <!-- 4. ANNOUNCEMENT POP-UP -->
+    <div id="announcement-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl z-50 flex items-center justify-center p-6">
+        <div class="glass max-w-sm w-full p-10 rounded-[3rem] border border-zinc-800 text-center shadow-2xl">
+            <div id="anno-icon" class="text-6xl mb-6">📢</div>
+            <h2 id="anno-title" class="text-2xl font-black text-white italic mb-3 uppercase tracking-tighter">MESSAGE</h2>
+            <p id="anno-msg" class="text-zinc-500 text-xs mb-10 leading-relaxed font-light"></p>
+            <button onclick="closeAnno()" class="w-full bg-white text-black py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-sky-500 hover:text-white transition">ACCEPT</button>
+        </div>
+    </div>
+
+    <script>
+        let users = JSON.parse(localStorage.getItem('apishop_v4_users')) || [];
+        let stocks = JSON.parse(localStorage.getItem('apishop_v4_stocks')) || [];
+        let currentUser = null;
+        let isRegister = false;
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => { alert("📋 Copied: " + text); }).catch(() => {
+                const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); alert("📋 Copied: " + text);
+            });
+        }
+
+        function showAnno(title, msg, icon = "📢") {
+            document.getElementById('anno-title').innerText = title; document.getElementById('anno-msg').innerText = msg;
+            document.getElementById('anno-icon').innerText = icon; document.getElementById('announcement-modal').classList.remove('hidden');
+        }
+        function closeAnno() { document.getElementById('announcement-modal').classList.add('hidden'); }
+
+        function toggleAuthMode() { isRegister = !isRegister; alert(isRegister ? "MODE: REGISTER" : "MODE: LOGIN"); }
+
+        function handleAuth() {
+            const id = document.getElementById('user-id').value, pass = document.getElementById('user-pass').value, pin = document.getElementById('user-pin').value;
+            if(id === "apishop" && pass === "123456789x") {
+                document.getElementById('auth-page').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden');
+                renderAdmin(); return;
+            }
+            if(isRegister) {
+                if(users.find(u => u.id === id)) return alert("Username Taken!");
+                users.push({ id, pass, pin, balance: 0, history: [] }); saveAll(); alert("Success!"); toggleAuthMode();
+            } else {
+                const u = users.find(u => u.id === id && u.pass === pass && u.pin === pin);
+                if(u) { currentUser = u; openShop(); } else { alert("Error!"); }
+            }
+        }
+
+        function openShop() {
+            document.getElementById('auth-page').classList.add('hidden'); document.getElementById('user-panel').classList.remove('hidden');
+            updateUI(); renderProducts();
+            showAnno("WELCOME", `ยินดีต้อนรับคุณ ${currentUser.id.toUpperCase()}\nเช็คสต็อกสินค้าใหม่ล่าสุดได้แล้ววันนี้!`, "🛡️");
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('p-grid');
+            grid.innerHTML = stocks.map(s => `
+                <div class="glass p-6 rounded-[2rem] text-center border-b-2 border-white/5 hover:border-sky-500 transition duration-500">
+                    <div class="text-3xl mb-4 grayscale">📦</div>
+                    <h4 class="font-bold text-xs h-10 overflow-hidden text-gray-300 uppercase tracking-tighter">${s.name}</h4>
+                    <p class="text-white font-black text-2xl my-3">${s.price} ฿</p>
+                    <p class="text-[8px] text-zinc-600 mb-4 italic">STOCK: ${s.items.filter(i => !i.sold).length}</p>
+                    <button onclick="buy(${s.id})" class="w-full bg-white text-black py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-sky-500 hover:text-white transition">BUY</button>
+                </div>
+            `).join('');
+        }
+
+        function buy(id) {
+            const s = stocks.find(s => s.id === id), item = s.items.find(i => !i.sold);
+            if(!item) return alert("OUT!"); if(currentUser.balance < s.price) return alert("MONEY!");
+            if(confirm(`Confirm purchase ${s.name}?`)) {
+                currentUser.balance -= Number(s.price); item.sold = true; item.buyer = currentUser.id; item.date = new Date().toLocaleString();
+                currentUser.history.push({ name: s.name, data: item.data, date: item.date });
+                saveAll(); updateUI(); renderProducts();
+                if(confirm(`ซื้อสำเร็จ!\nID: ${item.data}\n\nก๊อปปี้รหัสทันที?`)) copyToClipboard(item.data);
+            }
+        }
+
+        function addStock() {
+            const name = document.getElementById('adm-name').value, price = document.getElementById('adm-price').value, data = document.getElementById('adm-items').value.split('\n').filter(t => t.trim());
+            if(!name || !price || !data.length) return alert("MISSING!");
+            stocks.push({ id: Date.now(), name, price, items: data.map(d => ({ data: d, sold: false })) });
+            saveAll(); renderAdmin(); alert("ADDED!");
+        }
+
+        function renderAdmin() {
+            const list = document.getElementById('adm-list'); let totalMoney = 0, soldCount = 0, stockCount = 0;
+            users.forEach(u => totalMoney += u.balance); stocks.forEach(s => s.items.forEach(i => { if(i.sold) soldCount++; else stockCount++; }));
+            document.getElementById('adm-total-money').innerText = totalMoney; document.getElementById('adm-sold-count').innerText = soldCount;
+            document.getElementById('adm-stock-count').innerText = stockCount; document.getElementById('adm-user-count').innerText = users.length;
+            list.innerHTML = stocks.map((s, idx) => `
+                <div class="admin-row p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <div class="flex-1">
+                        <h4 class="font-black text-red-500 uppercase text-lg italic tracking-tighter">${s.name} (${s.price} ฿)</h4>
+                        <div class="text-[9px] font-mono space-y-1 mt-3">
+                            ${s.items.map(i => `<p class="${i.sold ? 'text-zinc-800' : 'text-zinc-300'}">${i.sold ? '[SOLD] -> '+i.buyer : '[READY] -> '+i.data}</p>`).join('')}
+                        </div>
+                    </div>
+                    <button onclick="removeStock(${idx})" class="text-red-900 border border-red-900/30 px-4 py-2 rounded-xl text-[10px] font-bold">DELETE</button>
+                </div>
+            `).reverse().join('');
+        }
+
+        function processAngpao() {
+            const link = document.getElementById('angpao-link').value;
+            if(!link.includes("gift.truemoney.com")) return alert("LINK!");
+            const amount = Math.floor(Math.random() * 50) + 10;
+            currentUser.balance += amount; saveAll(); updateUI();
+            document.getElementById('angpao-link').value = ""; toggleSection('topup-box');
+            showAnno("SUCCESS", `เติมเงินสำเร็จ: ${amount} ฿\nขอบคุณที่ใช้บริการ APISHOP`, "💰");
+        }
+
+        function updateUI() {
+            document.getElementById('u-balance').innerText = currentUser.balance; document.getElementById('u-name').innerText = currentUser.id.toUpperCase();
+            const hList = document.getElementById('u-history-list');
+            hList.innerHTML = currentUser.history.length ? currentUser.history.map(h => `
+                <div class="bg-zinc-950 p-4 rounded-2xl border border-zinc-900 flex justify-between items-center">
+                    <div class="flex-1"><p class="text-sky-500 font-bold text-[10px] uppercase">${h.name}</p><p class="text-xs text-white my-1 font-mono break-all">${h.data}</p><p class="text-[8px] text-zinc-700">${h.date}</p></div>
+                    <button onclick="copyToClipboard('${h.data}')" class="ml-4 bg-zinc-800 p-3 rounded-xl text-[10px] font-bold text-white uppercase">Copy</button>
+                </div>
+            `).reverse().join('') : "<p class='text-center text-zinc-900 py-10 italic text-xs uppercase tracking-widest'>Empty Logs</p>";
+        }
+        function toggleSection(id) { document.getElementById(id).classList.toggle('hidden'); }
+        function removeStock(idx) { if(confirm("DELETE?")) { stocks.splice(idx, 1); saveAll(); renderAdmin(); } }
+        function saveAll() { localStorage.setItem('apishop_v4_users', JSON.stringify(users)); localStorage.setItem('apishop_v4_stocks', JSON.stringify(stocks)); }
+    </script>
+</body>
+</html>
