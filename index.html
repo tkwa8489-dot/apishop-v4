@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apishop - Working Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <style>
+        * { font-family: 'Kanit', sans-serif; box-sizing: border-box; }
+        body { background-color: #020617; color: #e2e8f0; margin: 0; min-height: 100vh; }
+        .glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        .hidden { display: none !important; }
+        button { cursor: pointer; transition: 0.2s; }
+        button:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <nav class="p-4 glass sticky top-0 z-50 flex justify-between items-center shadow-xl">
+        <div class="flex items-center gap-2" onclick="location.reload()" style="cursor:pointer">
+            <div class="p-2 bg-cyan-500 rounded-lg text-white font-bold">AS</div>
+            <h1 class="text-xl font-bold uppercase tracking-tighter">Apishop</h1>
+        </div>
+        <div id="auth-zone" class="flex gap-2">
+            <button onclick="openM('login-modal')" class="text-white px-3 text-xs">เข้าสู่ระบบ</button>
+            <button onclick="openM('reg-modal')" class="bg-cyan-600 px-5 py-2 rounded-full text-xs font-bold shadow-lg">สมัครสมาชิก</button>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 max-w-5xl">
+        <div id="balance-card" class="hidden mb-6 p-6 glass rounded-3xl flex justify-between items-center border-l-4 border-cyan-500 shadow-2xl">
+            <div>
+                <p class="text-slate-400 text-[10px] uppercase">ยินดีต้อนรับคุณ <span id="user-display-name" class="text-cyan-400"></span></p>
+                <h2 class="text-3xl font-bold text-white"><span id="user-money">0</span> <span class="text-cyan-500 text-sm">฿</span></h2>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="showS('history')" class="bg-slate-800 px-4 py-2 rounded-xl text-[10px]">📜 ประวัติ</button>
+                <button onclick="showS('topup')" class="bg-cyan-600 px-4 py-2 rounded-xl text-[10px] font-bold">➕ เติมเงิน</button>
+            </div>
+        </div>
+
+        <section id="home-section">
+            <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <section id="topup-section" class="hidden max-w-md mx-auto py-4">
+            <div class="glass p-8 rounded-3xl text-center border border-cyan-500/20">
+                <h2 class="text-xl font-bold mb-4 uppercase italic">Topup</h2>
+                <div class="bg-slate-900 p-4 rounded-2xl mb-6">
+                    <p class="text-slate-500 text-[10px] mb-1">โอนเข้าวอลเล็ต</p>
+                    <p class="text-2xl font-bold text-cyan-400">096-998-0396</p>
+                </div>
+                <div class="text-left space-y-4">
+                    <label class="text-[10px] text-slate-400 uppercase">1. เลือกรูปสลิป</label>
+                    <input type="file" id="slip-file" accept="image/*" class="w-full text-xs text-slate-500">
+                    <label class="text-[10px] text-slate-400 uppercase">2. ระบุยอดเงิน</label>
+                    <input type="number" id="topup-amount" placeholder="ระบุยอดเงิน" class="w-full p-4 rounded-xl bg-slate-800 text-white border-none text-sm outline-none">
+                </div>
+                <button id="btn-submit-topup" onclick="uploadSlip()" class="w-full mt-8 py-4 rounded-2xl bg-cyan-600 font-bold shadow-lg shadow-cyan-500/20">ส่งสลิปให้แอดมิน</button>
+                <button onclick="showS('home')" class="mt-4 text-slate-500 text-xs block w-full underline">ยกเลิก</button>
+            </div>
+        </section>
+
+        <section id="history-section" class="hidden py-4">
+            <h2 class="text-xl font-bold mb-6 italic">History</h2>
+            <div id="order-history-list" class="space-y-3"></div>
+            <button onclick="showS('home')" class="mt-8 text-cyan-400 text-xs block text-center w-full">← กลับหน้าหลัก</button>
+        </section>
+    </main>
+
+    <div id="admin-panel" class="hidden fixed inset-0 bg-[#020617] z-[100] overflow-y-auto p-4 md:p-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
+                <h1 class="text-xl font-bold text-red-500 uppercase">Admin Dashboard</h1>
+                <button onclick="closeM('admin-panel')" class="bg-slate-800 px-6 py-2 rounded-xl text-xs uppercase font-bold">Close</button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 text-white">
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-green-400 font-bold mb-4 uppercase text-sm italic">Pending Slips</h3>
+                    <div id="admin-topup-requests" class="space-y-4"></div>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-cyan-400 font-bold mb-4 uppercase text-sm italic">Shop & Users</h3>
+                    <div id="admin-user-list" class="mb-6 space-y-2"></div>
+                    <div class="bg-slate-900 p-4 rounded-2xl space-y-3">
+                        <input type="text" id="adm-p-name" placeholder="ชื่อสินค้า" class="w-full p-3 rounded-xl bg-slate-800 text-xs">
+                        <input type="number" id="adm-p-price" placeholder="ราคา" class="w-full p-3 rounded-xl bg-slate-800 text-xs">
+                        <textarea id="adm-p-stock" placeholder="ไอดี:รหัส (1 บรรทัด ต่อ 1 อัน)" class="w-full p-3 rounded-xl bg-slate-800 h-24 text-xs"></textarea>
+                        <button onclick="adminAdd()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold text-xs">เพิ่มสินค้า</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-modal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-4">
+        <div class="glass p-8 rounded-3xl w-full max-w-xs border-t-4 border-cyan-500 shadow-2xl">
+            <h3 class="text-center font-bold mb-6 italic uppercase">Login</h3>
+            <input type="text" id="l-user" placeholder="Username" class="w-full p-4 mb-3 rounded-2xl bg-slate-900 text-white text-sm outline-none">
+            <input type="password" id="l-pass" placeholder="Password" class="w-full p-4 mb-6 rounded-2xl bg-slate-900 text-white text-sm outline-none">
+            <button onclick="login()" class="w-full bg-cyan-600 py-4 rounded-2xl font-bold shadow-lg shadow-cyan-500/20">LOG IN</button>
+            <button onclick="closeM('login-modal')" class="w-full mt-4 text-slate-500 text-[10px] uppercase">Close</button>
+        </div>
+    </div>
+
+    <div id="reg-modal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-4">
+        <div class="glass p-8 rounded-3xl w-full max-w-xs border-t-4 border-cyan-500 shadow-2xl">
+            <h3 class="text-center font-bold mb-6 italic uppercase">Register</h3>
+            <input type="text" id="r-user" placeholder="Username" class="w-full p-4 mb-3 rounded-2xl bg-slate-900 text-white text-sm outline-none">
+            <input type="password" id="r-pass1" placeholder="Password" class="w-full p-4 mb-3 rounded-2xl bg-slate-900 text-white text-sm outline-none">
+            <input type="password" id="r-pass2" placeholder="Confirm Password" class="w-full p-4 mb-6 rounded-2xl bg-slate-900 text-white text-sm outline-none">
+            <button onclick="register()" class="w-full bg-cyan-600 py-4 rounded-2xl font-bold shadow-lg shadow-cyan-500/20">SIGN UP</button>
+            <button onclick="closeM('reg-modal')" class="w-full mt-4 text-slate-500 text-[10px] uppercase">Close</button>
+        </div>
+    </div>
+
+    <div id="success-modal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[400] p-4">
+        <div class="glass p-8 rounded-3xl w-full max-w-xs text-center border-t-4 border-green-500">
+            <h3 class="font-bold mb-4 text-green-400 italic">SUCCESS! ✅</h3>
+            <input type="text" id="acc-out" readonly class="w-full bg-slate-900 p-4 rounded-xl text-cyan-400 font-bold text-center mb-4 font-mono border border-cyan-500/10 shadow-inner">
+            <button onclick="copyAcc()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold">COPY ACCOUNT</button>
+            <button onclick="closeM('success-modal')" class="mt-4 text-slate-500 text-[10px] uppercase">Close Window</button>
+        </div>
+    </div>
+
+    <script>
+        // เริ่มต้น Firebase (เช็คทุกจุดแล้ว)
+        var firebaseConfig = {
+          apiKey: "AIzaSyD9c6XQkaxfimS6z3iIg5dh2filSsZ9fR8",
+          authDomain: "apishop-c68d5.firebaseapp.com",
+          projectId: "apishop-c68d5",
+          storageBucket: "apishop-c68d5.firebasestorage.app",
+          messagingSenderId: "1036199268260",
+          appId: "1:1036199268260:web:ca385d7ccc7e321296fb31",
+          databaseURL: "https://apishop-c68d5-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        var db = firebase.database();
+        var IMGBB_API_KEY = "37a72c1c69996d98d40787e997a02c81"; 
+
+        var users = [];
+        var products = [];
+        var currentUser = null;
+
+        // ดึงข้อมูล Realtime
+        db.ref('users').on('value', function(snapshot) {
+            var val = snapshot.val();
+            users = val ? Object.keys(val).map(function(k) { 
+                var obj = val[k];
+                obj.username = k;
+                return obj;
+            }) : [];
+            if(currentUser) {
+                var updated = users.find(function(u) { return u.username === currentUser.username; });
+                if(updated) { currentUser = updated; updateUI(); }
+            }
+            renderAdmin();
+        });
+
+        db.ref('products').on('value', function(snapshot) {
+            var val = snapshot.val();
+            products = val ? Object.keys(val).map(function(k) { 
+                var obj = val[k];
+                obj.id = k;
+                return obj;
+            }) : [];
+            renderP();
+            renderAdmin();
+        });
+
+        // ระบบควบคุมหน้าต่าง
+        window.openM = function(id) { document.getElementById(id).classList.remove('hidden'); }
+        window.closeM = function(id) { document.getElementById(id).classList.add('hidden'); }
+        window.showS = function(id) {
+            document.getElementById('home-section').classList.add('hidden');
+            document.getElementById('topup-section').classList.add('hidden');
+            document.getElementById('history-section').classList.add('hidden');
+            document.getElementById(id + '-section').classList.remove('hidden');
+            if(id === 'history') renderHistory();
+        }
+
+        // ระบบสมาชิก
+        window.register = function() {
+            var u = document.getElementById('r-user').value.trim();
+            var p1 = document.getElementById('r-pass1').value;
+            var p2 = document.getElementById('r-pass2').value;
+            if(!u || !p1 || p1 !== p2) return alert('กรุณากรอกข้อมูลให้ถูกต้อง');
+            db.ref('users/' + u).set({ password: p1, balance: 0, orders: [] }).then(function() {
+                alert('สมัครสมาชิกสำเร็จ!');
+                closeM('reg-modal');
+            });
+        }
+
+        window.login = function() {
+            var u = document.getElementById('l-user').value.trim();
+            var p = document.getElementById('l-pass').value;
+            if(u === 'Apishop' && p === 'Apishop100955') {
+                var k = prompt("Master Key:");
+                if(k === "100955") { openM('admin-panel'); closeM('login-modal'); return; }
+            }
+            var user = users.find(function(x) { return x.username === u && x.password === p; });
+            if(user) {
+                currentUser = user;
+                updateUI();
+                closeM('login-modal');
+            } else alert('ชื่อหรือรหัสผ่านผิด');
+        }
+
+        function updateUI() {
+            if(!currentUser) return;
+            document.getElementById('balance-card').classList.remove('hidden');
+            document.getElementById('user-money').innerText = currentUser.balance;
+            document.getElementById('user-display-name').innerText = currentUser.username;
+            document.getElementById('auth-zone').innerHTML = '<span class="text-cyan-400 font-bold text-xs uppercase">' + currentUser.username + '</span><button onclick="location.reload()" class="ml-3 text-red-500 text-[10px] font-bold">ออก</button>';
+        }
+
+        // ระบบเติมเงินแบบแนบสลิป
+        window.uploadSlip = function() {
+            if(!currentUser) return alert('กรุณาล็อกอิน');
+            var fileInput = document.getElementById('slip-file');
+            var amountInput = document.getElementById('topup-amount');
+            if(!fileInput.files[0] || !amountInput.value) return alert('กรุณาเลือกรูปสลิปและใส่ยอดเงิน');
+
+            var btn = document.getElementById('btn-submit-topup');
+            btn.innerText = "กำลังอัปโหลด..."; btn.disabled = true;
+
+            var formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+
+            fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, { method: 'POST', body: formData })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if(data.success) {
+                    db.ref('topup_requests/' + Date.now()).set({
+                        username: currentUser.username,
+                        amount: parseInt(amountInput.value),
+                        slip: data.data.url,
+                        date: new Date().toLocaleString()
+                    }).then(function() {
+                        alert('ส่งสลิปสำเร็จ! รอแอดมินอนุมัติเงินสักครู่');
+                        showS('home');
+                    });
+                } else alert('อัปโหลดสลิปไม่สำเร็จ');
+            })
+            .catch(function() { alert('เกิดข้อผิดพลาดในการอัปโหลด'); })
+            .finally(function() { btn.innerText = "ส่งสลิปให้แอดมิน"; btn.disabled = false; });
+        }
+
+        // ระบบแอดมิน
+        function renderAdmin() {
+            db.ref('topup_requests').on('value', function(snapshot) {
+                var reqs = snapshot.val();
+                var h = '';
+                if(reqs) {
+                    Object.keys(reqs).forEach(function(id) {
+                        var r = reqs[id];
+                        h += '<div class="p-4 bg-slate-900 rounded-2xl border border-white/5 shadow-lg">' +
+                            '<div class="flex justify-between text-xs mb-3 font-bold"><span class="text-cyan-400">👤 ' + r.username + '</span><span class="text-green-400">💰 ' + r.amount + '฿</span></div>' +
+                            '<a href="' + r.slip + '" target="_blank"><img src="' + r.slip + '" class="w-full h-32 object-cover rounded-xl border border-white/10 hover:opacity-50 mb-3"></a>' +
+                            '<button onclick="approveMoney(\'' + id + '\', \'' + r.username + '\', ' + r.amount + ')" class="w-full bg-green-600 py-3 rounded-xl font-bold text-[10px] uppercase">อนุมัติเงิน</button>' +
+                        '</div>';
+                    });
+                }
+                document.getElementById('admin-topup-requests').innerHTML = h || '<p class="text-slate-500 text-[10px] text-center">ไม่มีสลิปที่รอเช็ค</p>';
+            });
+            document.getElementById('admin-user-list').innerHTML = users.map(function(u) {
+                return '<div class="p-3 bg-slate-900 rounded-xl flex justify-between text-[10px] border border-white/5 mb-1"><span>' + u.username + '</span><button onclick="editMoney(\'' + u.username + '\')" class="text-yellow-500 font-bold">' + u.balance + '฿</button></div>';
+            }).join('');
+        }
+
+        window.approveMoney = function(reqId, uName, amt) {
+            var user = users.find(function(x) { return x.username === uName; });
+            if(user) {
+                db.ref('users/' + uName + '/balance').set((user.balance || 0) + amt);
+                db.ref('topup_requests/' + reqId).remove();
+                alert('เติมเงินให้ ' + uName + ' เรียบร้อย!');
+            }
+        }
+
+        window.editMoney = function(uName) {
+            var m = prompt("แก้เงิน " + uName + ":");
+            if (m !== null && !isNaN(m)) db.ref('users/' + uName + '/balance').set(parseInt(m));
+        }
+
+        window.adminAdd = function() {
+            var n = document.getElementById('adm-p-name').value;
+            var p = parseInt(document.getElementById('adm-p-price').value);
+            var s = document.getElementById('adm-p-stock').value.split('\n').filter(function(l) { return l.trim() !== ""; });
+            if(n && p) {
+                db.ref('products/' + Date.now()).set({ name: n, price: p, stock: s }).then(function() {
+                    alert('ลงขายสำเร็จ!');
+                    document.getElementById('adm-p-name').value = '';
+                    document.getElementById('adm-p-price').value = '';
+                    document.getElementById('adm-p-stock').value = '';
+                });
+            } else alert('กรุณากรอกชื่อและราคา');
+        }
+
+        // ระบบซื้อสินค้า
+        window.buyProduct = function(pId) {
+            if(!currentUser) return alert('กรุณาล็อกอินก่อนซื้อสินค้า');
+            var p = products.find(function(x) { return x.id == pId; });
+            if(!p || !p.stock || p.stock.length === 0) return alert('สินค้าหมด!');
+            if(currentUser.balance < p.price) return alert('เงินไม่พอครับ');
+            
+            var acc = p.stock.shift();
+            var newBal = currentUser.balance - p.price;
+            var orders = currentUser.orders || [];
+            orders.unshift({ name: p.name, account: acc, date: new Date().toLocaleString() });
+
+            db.ref('products/' + pId + '/stock').set(p.stock);
+            db.ref('users/' + currentUser.username + '/balance').set(newBal);
+            db.ref('users/' + currentUser.username + '/orders').set(orders).then(function() {
+                document.getElementById('acc-out').value = acc;
+                openM('success-modal');
+            });
+        }
+
+        function renderP() {
+            document.getElementById('product-list').innerHTML = products.map(function(p) {
+                return '<div class="glass p-5 rounded-3xl border border-white/5 flex flex-col justify-between shadow-xl">' +
+                    '<h3 class="text-white font-bold text-sm mb-1">' + p.name + '</h3>' +
+                    '<p class="text-[10px] text-slate-500 mb-4 font-mono uppercase tracking-widest italic">STOCK: ' + (p.stock ? p.stock.length : 0) + '</p>' +
+                    '<div class="flex justify-between items-center">' +
+                        '<span class="text-lg font-bold text-white">' + p.price + ' ฿</span>' +
+                        '<button onclick="buyProduct(\'' + p.id + '\')" class="bg-cyan-600 px-5 py-2 rounded-xl text-[10px] font-bold text-white uppercase shadow-lg shadow-cyan-500/20">Buy Now</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function renderHistory() {
+            var l = document.getElementById('order-history-list');
+            if(!currentUser.orders || currentUser.orders.length === 0) return l.innerHTML = '<p class="text-center text-slate-500 py-10 text-xs">ไม่มีประวัติการซื้อ</p>';
+            l.innerHTML = currentUser.orders.map(function(o) {
+                return '<div c
